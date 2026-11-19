@@ -34,10 +34,13 @@ protocol OverlayViewDelegate: AnyObject {
     func overlayViewRemoteSelectionDidFinish(_ rect: NSRect)
     func overlayViewDidRequestAddCapture()
     func overlayViewDidRequestRestoreLastSelection()
+    func overlayViewDidRequestCopyAndClose()
 }
 
 extension OverlayViewDelegate {
     func overlayViewDidRequestRestoreLastSelection() {}
+    /// Editor Return: copy the image and close the editor. Plain copy by default.
+    func overlayViewDidRequestCopyAndClose() { overlayViewDidConfirm() }
     /// ⌘C during scroll capture: stop and put the stitched image on the
     /// clipboard whatever the capture mode. Plain Stop by default.
     func overlayViewDidRequestCopyScrollCapture() { overlayViewDidRequestStopScrollCapture() }
@@ -9453,7 +9456,12 @@ class OverlayView: NSView {
             }
         case 36, 76:  // Return / numpad Enter — quick capture (respects quickCaptureMode setting)
             if textEditView == nil, state == .selected {
-                overlayDelegate?.overlayViewDidRequestQuickSave()
+                if isEditorMode {
+                    // Editor: copy to the clipboard and close the editor.
+                    overlayDelegate?.overlayViewDidRequestCopyAndClose()
+                } else {
+                    overlayDelegate?.overlayViewDidRequestQuickSave()
+                }
             }
         case 51, 117:  // Backspace / Forward-Delete — remove selected annotation(s)
             guard textEditView == nil, state == .selected, !selectedAnnotations.isEmpty else { break }
@@ -9968,6 +9976,8 @@ class OverlayView: NSView {
 
     private func renderSelectedRegion(includeAnnotations: Bool) -> NSImage? {
         guard selectionRect.width > 0, selectionRect.height > 0 else { return nil }
+        // Editor output grows to hold annotations drawn past the image edges.
+        let outputRect = includeAnnotations ? editorOutputRect() : selectionRect
 
         // Determine the source image's actual pixel scale so we render at
         // native resolution instead of relying on lockFocus() which always
@@ -9987,10 +9997,10 @@ class OverlayView: NSView {
         // interpolation blur (especially visible on 1x non-Retina displays
         // where fractional mouse coordinates aren't absorbed by 2x scaling).
         let snappedRect = NSRect(
-            x: round(selectionRect.origin.x * scale) / scale,
-            y: round(selectionRect.origin.y * scale) / scale,
-            width: round(selectionRect.width * scale) / scale,
-            height: round(selectionRect.height * scale) / scale
+            x: round(outputRect.origin.x * scale) / scale,
+            y: round(outputRect.origin.y * scale) / scale,
+            width: round(outputRect.width * scale) / scale,
+            height: round(outputRect.height * scale) / scale
         )
 
         let pixelW = Int(snappedRect.width * scale)
@@ -10029,6 +10039,11 @@ class OverlayView: NSView {
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = nsContext
 
+        if outputRect != selectionRect {
+            // Grown editor output: the area around the image is white.
+            NSColor.white.setFill()
+            snappedRect.fill()
+        }
         if let screenshot = captureSourceImage ?? screenshotImage {
             // In editor mode the image is at selectionRect (natural size);
             // in overlay mode it fills bounds (full screen).

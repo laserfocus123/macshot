@@ -457,6 +457,16 @@ extension DetachedEditorWindowController: OverlayViewDelegate {
         (NSApp.delegate as? AppDelegate)?.showFloatingThumbnail(image: save.image, annotationData: save.annotationData, historyEntryID: historyEntryID)
     }
 
+    /// Return in the editor: copy like the Copy button, then always close.
+    func overlayViewDidRequestCopyAndClose() {
+        guard let save = captureHistorySave() else { return }
+        ImageEncoder.copyToClipboard(save.image)
+        playCopySound()
+        autoSaveToHistoryIfNeeded(save)
+        window?.close()
+        (NSApp.delegate as? AppDelegate)?.showFloatingThumbnail(image: save.image, annotationData: save.annotationData, historyEntryID: historyEntryID)
+    }
+
     func overlayViewDidRequestSave() {
         switch SaveActionPreference.current {
         case .saveToFolder:
