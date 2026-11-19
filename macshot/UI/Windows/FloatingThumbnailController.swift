@@ -871,22 +871,18 @@ private class ThumbnailView: NSView {
 
         guard isHovering else { return }
 
-        // Semi-transparent dark overlay
-        NSColor.black.withAlphaComponent(0.45).setFill()
+        // Light dark overlay: hints that a click opens the editor
+        NSColor.black.withAlphaComponent(0.2).setFill()
         NSBezierPath(roundedRect: r, xRadius: cr, yRadius: cr).fill()
 
         let pad = scaled(10, minimum: 5)
         let cornerD = scaled(28, minimum: 18)
 
         // Corner button definitions: (center, symbol, keyPath to write rect)
-        var cornerDefs: [(NSPoint, String)] = [
+        // Only the close button; a click anywhere else opens the editor.
+        let cornerDefs: [(NSPoint, String)] = [
             (NSPoint(x: r.minX + pad + cornerD/2, y: r.maxY - pad - cornerD/2), "xmark"),
-            (NSPoint(x: r.maxX - pad - cornerD/2, y: r.maxY - pad - cornerD/2), "pin.fill"),
-            (NSPoint(x: r.minX + pad + cornerD/2, y: r.minY + pad + cornerD/2), "pencil"),
         ]
-        #if !OFFLINE
-        cornerDefs.append((NSPoint(x: r.maxX - pad - cornerD/2, y: r.minY + pad + cornerD/2), "icloud.and.arrow.up"))
-        #endif
 
         var cornerRects: [NSRect] = []
         for (center, symbol) in cornerDefs {
@@ -912,54 +908,8 @@ private class ThumbnailView: NSView {
                 tinted.draw(in: iconRect, from: NSRect.zero, operation: .sourceOver, fraction: 1.0)
             }
         }
-        if cornerRects.count >= 3 {
-            closeBtnRect  = cornerRects[0]
-            pinBtnRect    = cornerRects[1]
-            editBtnRect   = cornerRects[2]
-            #if !OFFLINE
-            uploadBtnRect = cornerRects[3]
-            #endif
-        }
-
-        // Center action buttons: Copy + Save
-        let centerBtnH = scaled(32, minimum: 18)
-        let centerGap = scaled(8, minimum: 4)
-        let fontSize = scaled(13, minimum: 9)
-        let titleFont = NSFont.systemFont(ofSize: fontSize, weight: .medium)
-        let titleAttrs: [NSAttributedString.Key: Any] = [.font: titleFont]
-        let maxTitleW = max(
-            (L("Copy") as NSString).size(withAttributes: titleAttrs).width,
-            (L("Save") as NSString).size(withAttributes: titleAttrs).width
-        )
-        let horizontalTextPadding = scaled(32, minimum: 18)
-        let preferredCenterW = max(scaled(110, minimum: 64), ceil(maxTitleW + horizontalTextPadding))
-        let centerBtnW = min(r.width - pad * 2, preferredCenterW)
-        let totalH = centerBtnH * 2 + centerGap
-        let btnsY = r.midY - totalH/2
-
-        let copyRect = NSRect(x: r.midX - centerBtnW/2, y: btnsY + centerBtnH + centerGap, width: centerBtnW, height: centerBtnH)
-        let saveRect = NSRect(x: r.midX - centerBtnW/2, y: btnsY,                  width: centerBtnW, height: centerBtnH)
-        copyBtnRect = copyRect
-        saveBtnRect = saveRect
-
-        for (rect, title) in [(copyRect, L("Copy")), (saveRect, L("Save"))] {
-            let isHit = rect == hoveredRect
-            let bg = NSBezierPath(roundedRect: rect, xRadius: centerBtnH/2, yRadius: centerBtnH/2)
-            if isHit {
-                NSColor.white.withAlphaComponent(0.95).setFill()
-            } else {
-                NSColor.white.withAlphaComponent(0.85).setFill()
-            }
-            bg.fill()
-
-            let attrs: [NSAttributedString.Key: Any] = [
-                .font: titleFont,
-                .foregroundColor: isHit ? NSColor.black : NSColor(white: 0.1, alpha: 1),
-            ]
-            let str = title as NSString
-            let strSize = str.size(withAttributes: attrs)
-            str.draw(at: NSPoint(x: rect.midX - strSize.width/2, y: rect.midY - strSize.height/2), withAttributes: attrs)
-        }
+        closeBtnRect = cornerRects.first ?? .zero
+        // Pin, edit, upload, copy and save buttons are removed; their rects stay empty.
     }
 
     private func tintedWhite(_ img: NSImage) -> NSImage {
