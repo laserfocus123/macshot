@@ -5881,6 +5881,14 @@ class OverlayView: NSView {
                 return
             }
 
+            // Editor: arrows and lines may start in the margin outside the
+            // image, so they can point in from the edge. The part outside
+            // the image is clipped from the output.
+            if isEditorMode && (currentTool == .arrow || currentTool == .line) {
+                startAnnotation(at: viewToCanvas(point))
+                return
+            }
+
             // Outside the selection — historically this reset everything to
             // start a new selection, but accidental clicks outside an
             // established selection were destroying in-progress annotation

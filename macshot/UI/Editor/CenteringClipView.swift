@@ -42,6 +42,18 @@ class CenteringClipView: NSClipView {
             if doc.bounds.contains(docPoint) {
                 return doc
             }
+            // Margin around a smaller-than-window image: still route to the
+            // document view so arrows/lines can start outside the image.
+            // Stay inside the content insets, which sit under the editor chrome.
+            let insets = enclosingScrollView?.contentInsets ?? NSEdgeInsetsZero
+            let content = NSRect(
+                x: bounds.minX + insets.left, y: bounds.minY + insets.bottom,
+                width: bounds.width - insets.left - insets.right,
+                height: bounds.height - insets.top - insets.bottom)
+            let local = convert(point, from: superview)
+            if content.contains(local) {
+                return doc
+            }
         }
         return result
     }
