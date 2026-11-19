@@ -7122,23 +7122,20 @@ class OverlayView: NSView {
 
         // Toolbar right-clicks handled by ToolbarButtonView.onRightClick → handleToolbarButtonRightClick
 
-        // Anchored selection toggle: right-click in idle starts no-hold
-        // tracking from that point; a second right-click while tracking
-        // commits. Left-click during tracking also commits (handled in
-        // mouseDown). ESC cancels. Locked during recording and editor mode.
-        if isAnchoredSelecting {
-            updateSelectionRect(to: point, shiftHeld: event.modifierFlags.contains(.shift), modifiers: event.modifierFlags)
-            commitAnchoredSelection()
-            return
-        }
-        if state == .idle && shouldAllowNewSelection() {
-            selectionStart = point
-            selectionRect = NSRect(origin: point, size: .zero)
-            state = .selecting
-            isAnchoredSelecting = true
-            overlayDelegate?.overlayViewDidBeginSelection()
-            needsDisplay = true
-            return
+        // Right-click cancels the capture (same as Escape) while picking a
+        // region: before a selection exists, mid-drag, or outside a finished
+        // selection. Right-clicks inside a selection keep their tool uses
+        // (color wheel, anchor points, color sampler). Never in the editor
+        // or recording, where the overlay isn't a capture screen.
+        if shouldAllowNewSelection() && !colorWheel.isVisible {
+            let pickingRegion = state == .idle || state == .selecting || isAnchoredSelecting
+            let outsideSelection = state == .selected && !pointIsInSelection(point)
+                && currentTool != .colorSampler
+            if pickingRegion || outsideSelection {
+                isAnchoredSelecting = false
+                overlayDelegate?.overlayViewDidCancel()
+                return
+            }
         }
 
         // Right-click on a line/arrow/measure: add anchor point.

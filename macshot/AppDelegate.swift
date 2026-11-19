@@ -273,6 +273,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
         EffectsMigration.runIfNeeded()
         MicrophoneDeviceSelection.repairLegacyPreference()
 
+        // Keep the login item pointed at THIS build. Registration is tied to
+        // the app's code signature, so after swapping in a differently signed
+        // build the old registration would otherwise linger.
+        if #available(macOS 13.0, *), UserDefaults.standard.bool(forKey: "launchAtLogin") {
+            let migratedKey = "forkLoginItemReRegistered"
+            if !UserDefaults.standard.bool(forKey: migratedKey) {
+                // Drop the registration the previously installed build left behind.
+                try? SMAppService.mainApp.unregister()
+                UserDefaults.standard.set(true, forKey: migratedKey)
+            }
+            try? SMAppService.mainApp.register()
+        }
+
         // Surface save failures — otherwise a capture that can't be written
         // (full disk, unmounted volume) disappears without a word.
         ImageSaveService.onFailure = { [weak self] message in

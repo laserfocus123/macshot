@@ -1039,8 +1039,8 @@ private class ThumbnailView: NSView {
         if copyBtnRect.contains(p)   { onCopy?();   return }
         if saveBtnRect.contains(p)   { onSave?();   return }
 
-        // Click anywhere else on thumbnail — dismiss
-        if isHovering { onClose?() }
+        // Click anywhere else on thumbnail — open the editor
+        onEdit?()
     }
 
     override func scrollWheel(with event: NSEvent) {
